@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自注意力机制可视化 (Self-Attention Visualization)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 1px solid #334155;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #94a3b8;
+            font-size: 1.1rem;
+        }
+
+        .control-panel {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 30px;
+            border: 1px solid #334155;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-weight: 600;
+            color: #cbd5e1;
+            min-width: 80px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            min-width: 200px;
+            padding: 12px 16px;
+            background: #0f172a;
+            border: 2px solid #334155;
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #60a5fa;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary {
+            background: #334155;
+            color: #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #475569;
+        }
+
+        .steps-nav {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 30px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+
+        .step-btn {
+            padding: 10px 20px;
+            background: #1e293b;
+            border: 2px solid #334155;
+            border-radius: 8px;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: all 0.3s;
+            white-space: nowrap;
+            font-weight: 500;
+        }
+
+        .step-btn.active {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            border-color: transparent;
+            color: white;
+        }
+
+        .step-btn:hover:not(.active) {
+            border-color: #60a5fa;
+            color: #e2e8f0;
+        }
+
+        .visualization {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 30px;
+            border: 1px solid #334155;
+            min-height: 500px;
+        }
+
+        .step-title {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+            color: #f1f5f9;
+        }
+
+        .step-description {
+            color: #94a3b8;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .math-formula {
+            background: #0f172a;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            margin-bottom: 30px;
+            border: 1px solid #334155;
+            font-size: 1.2rem;
+            color: #60a5fa;
+        }
+
+        .tokens-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        .token-box {
+            background: linear-gradient(135deg, #1e40af, #3730a3);
+            padding: 16px 24px;
+            border-radius: 12px;
+            text-align: center;
+            min-width: 100px;
+            position: relative;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .token-box:hover {
+            transform: translateY(-5px);
+            border-color: #60a5fa;
+            box-shadow: 0 20px 40px -10px rgba(96, 165, 250, 0.3);
+        }
+
+        .token-label {
+            font-size: 0.75rem;
+            color: #93bbfc;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .token-text {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .token-vector {
+            margin-top: 8px;
+            font-size: 0.75rem;
+            color: #bfdbfe;
+            font-family: monospace;
+        }
+
+        .matrix-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 40px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        .matrix-wrapper {
+            text-align: center;
+        }
+
+        .matrix-label {
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #cbd5e1;
+            font-size: 1.1rem;
+        }
+
+        .matrix {
+            display: inline-grid;
+            gap: 4px;
+            padding: 16px;
+            background: #0f172a;
+            border-radius: 12px;
+            border: 2px solid #334155;
+        }
+
+        .matrix-cell {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .matrix-cell:hover {
+            transform: scale(1.1);
+            z-index: 10;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .heatmap-cell {
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .attention-viz {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            height: 400px;
+        }
+
+        .attention-svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .token-node {
+            fill: url(#tokenGradient);
+            stroke: #60a5fa;
+            stroke-width: 2;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .token-node:hover {
+            stroke: #fbbf24;
+            stroke-width: 3;
+            filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.5));
+        }
+
+        .token-text-svg {
+            fill: white;
+            font-size: 14px;
+            font-weight: 600;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            pointer-events: none;
+        }
+
+        .attention-line {
+            fill: none;
+            stroke-linecap: round;
+            opacity: 0;
+            transition: opacity 0.8s ease;
+        }
+
+        .attention-line.active {
+            opacity: 0.7;
+        }
+
+        .arrow-head {
+            fill: #fbbf24;
+            opacity: 0;
+            transition: opacity 0.8s ease;
+        }
+
+        .arrow-head.active {
+            opacity: 0.9;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        .calculation-detail {
+            background: #0f172a;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+            border: 1px solid #334155;
+        }
+
+        .calc-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            font-family: monospace;
+            font-size: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .calc-token {
+            background: #1e40af;
+            padding: 4px 12px;
+            border-radius: 6px;
+            color: white;
+            font-weight: 600;
+        }
+
+        .calc-op {
+            color: #94a3b8;
+            font-size: 1.2rem;
+        }
+
+        .calc-result {
+            background: #065f46;
+            padding: 4px 12px;
+            border-radius: 6px;
+            color: #6ee7b7;
+            font-weight: 600;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #334155;
+            border-radius: 2px;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            border-radius: 2px;
+            transition: width 0.5s ease;
+        }
+
+        .dim-control {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .dim-control label {
+            min-width: auto;
+            font-size: 0.9rem;
+        }
+
+        input[type="range"] {
+            width: 150px;
+            accent-color: #3b82f6;
+        }
+
+        .dim-value {
+            min-width: 30px;
+            text-align: center;
+            font-weight: 600;
+            color: #60a5fa;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .highlight {
+            animation: pulse 2s infinite;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.6s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .softmax-viz {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .softmax-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: #0f172a;
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+        }
+
+        .softmax-token {
+            min-width: 80px;
+            font-weight: 600;
+            color: #60a5fa;
+        }
+
+        .softmax-bar-container {
+            flex: 1;
+            height: 30px;
+            background: #1e293b;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .softmax-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            border-radius: 4px;
+            transition: width 1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+            color: white;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .output-comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .output-card {
+            background: #0f172a;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #334155;
+        }
+
+        .output-card h3 {
+            color: #60a5fa;
+            margin-bottom: 12px;
+            font-size: 1rem;
+        }
+
+        .vector-display {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .vector-item {
+            background: #1e293b;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #e2e8f0;
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 1.8rem; }
+            .matrix-container { gap: 20px; }
+            .matrix-cell { width: 40px; height: 40px; font-size: 0.8rem; }
+            .attention-viz { height: 300px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔍 自注意力机制可视化</h1>
+            <p class="subtitle">Interactive Self-Attention Mechanism Visualization</p>
+        </header>
+
+        <div class="control-panel">
+            <div class="input-group">
+                <label>输入句子:</label>
+                <input type="text" id="sentenceInput" value="猫 坐 在 垫子 上" placeholder="输入句子，用空格分词">
+                <button class="btn btn-primary" onclick="runVisualization()">运行演示</button>
+                <button class="btn btn-secondary" onclick="resetDemo()">重置</button>
+            </div>
+            <div class="dim-control">
+                <label>向量维度 (d_k):</label>
+                <input type="range" id="dimSlider" min="2" max="8" value="4" oninput="updateDimDisplay()">
+                <span class="dim-value" id="dimValue">4</span>
+                <label style="margin-left: 20px;">演示速度:</label>
+                <input type="range" id="speedSlider" min="1" max="5" value="3">
+            </div>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressBar" style="width: 0%"></div>
+        </div>
+
+        <div class="steps-nav">
+            <button class="step-btn active" onclick="showStep(0)">1. 输入嵌入</button>
+            <button class="step-btn" onclick="showStep(1)">2. Q/K/V 生成</button>
+            <button class="step-btn" onclick="showStep(2)">3. 注意力分数</button>
+            <button class="step-btn" onclick="showStep(3)">4. Softmax</button>
+            <button class="step-btn" onclick="showStep(4)">5. 加权聚合</button>
+            <button class="step-btn" onclick="showStep(5)">6. 注意力图谱</button>
+        </div>
+
+        <div class="visualization" id="visualization">
+            <!-- Content will be dynamically generated -->
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let currentStep = 0;
+        let tokens = [];
+        let embeddings = [];
+        let Q = [], K = [], V = [];
+        let attentionScores = [];
+        let attentionWeights = [];
+        let output = [];
+        let dim = 4;
+        let speed = 3;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            runVisualization();
+        });
+
+        function updateDimDisplay() {
+            dim = parseInt(document.getElementById('dimSlider').value);
+            document.getElementById('dimValue').textContent = dim;
+        }
+
+        function getSpeed() {
+            return 6 - parseInt(document.getElementById('speedSlider').value);
+        }
+
+        function resetDemo() {
+            document.getElementById('sentenceInput').value = '猫 坐 在 垫子 上';
+            document.getElementById('dimSlider').value = 4;
+            updateDimDisplay();
+            currentStep = 0;
+            runVisualization();
+        }
+
+        function tokenize(text) {
+            return text.trim().split(/\s+/).filter(t => t.length > 0);
+        }
+
+        // Seeded random for reproducibility
+        function seededRandom(seed) {
+            const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
+            return x - Math.floor(x);
+        }
+
+        function generateVector(seed, size) {
+            const vec = [];
+            for (let i = 0; i < size; i++) {
+                vec.push((seededRandom(seed + i * 17) * 2 - 1).toFixed(2));
+            }
+            return vec;
+        }
+
+        function runVisualization() {
+            const text = document.getElementById('sentenceInput').value || '猫 坐 在 垫子 上';
+            tokens = tokenize(text);
+            dim = parseInt(document.getElementById('dimSlider').value);
+            
+            if (tokens.length === 0) tokens = ['[PAD]'];
+            if (tokens.length > 8) tokens = tokens.slice(0, 8); // Limit for visualization
+
+            // Generate embeddings (simplified)
+            embeddings = tokens.map((t, i) => generateVector(i * 100 + 1, dim));
+            
+            // Generate Q, K, V (simplified linear projections)
+            Q = embeddings.map((e, i) => e.map((v, j) => (parseFloat(v) + (seededRandom(i*10+j)*0.4-0.2)).toFixed(2)));
+            K = embeddings.map((e, i) => e.map((v, j) => (parseFloat(v) * 0.8 + (seededRandom(i*20+j)*0.3)).toFixed(2)));
+            V = embeddings.map((e, i) => e.map((v, j) => (parseFloat(v) * 0.9 + 0.1).toFixed(2)));
+
+            // Calculate attention scores: Q * K^T / sqrt(d_k)
+            attentionScores = [];
+            const scale = Math.sqrt(dim);
+            for (let i = 0; i < tokens.length; i++) {
+                const row = [];
+                for (let j = 0; j < tokens.length; j++) {
+                    let score = 0;
+                    for (let k = 0; k < dim; k++) {
+                        score += parseFloat(Q[i][k]) * parseFloat(K[j][k]);
+                    }
+                    row.push((score / scale).toFixed(2));
+                }
+                attentionScores.push(row);
+            }
+
+            // Softmax
+            attentionWeights = attentionScores.map(row => {
+                const exps = row.map(v => Math.exp(parseFloat(v)));
+                const sum = exps.reduce((a, b) => a + b, 0);
+                return exps.map(v => (v / sum).toFixed(3));
+            });
+
+            // Output = Attention * V
+            output = [];
+            for (let i = 0; i < tokens.length; i++) {
+                const outVec = [];
+                for (let k = 0; k < dim; k++) {
+                    let val = 0;
+                    for (let j = 0; j < tokens.length; j++) {
+                        val += parseFloat(attentionWeights[i][j]) * parseFloat(V[j][k]);
+                    }
+                    outVec.push(val.toFixed(2));
+                }
+                output.push(outVec);
+            }
+
+            showStep(0);
+        }
+
+        function showStep(step) {
+            currentStep = step;
+            
+            // Update buttons
+            document.querySelectorAll('.step-btn').forEach((btn, i) => {
+                btn.classList.toggle('active', i === step);
+            });
+
+            // Update progress
+            const progress = ((step + 1) / 6) * 100;
+            document.getElementById('progressBar').style.width = progress + '%';
+
+            const viz = document.getElementById('visualization');
+            viz.innerHTML = '';
+            viz.className = 'visualization fade-in';
+
+            switch(step) {
+                case 0: renderInputEmbedding(viz); break;
+                case 1: renderQKV(viz); break;
+                case 2: renderAttentionScores(viz); break;
+                case 3: renderSoftmax(viz); break;
+                case 4: renderWeightedAggregation(viz); break;
+                case 5: renderAttentionGraph(viz); break;
+            }
+        }
+
+        function renderInputEmbedding(container) {
+            container.innerHTML = `
+                <h2 class="step-title">步骤 1: 输入嵌入 (Input Embedding)</h2>
+                <p class="step-description">
+                    输入句子被分词后，每个 token 被映射为一个固定维度的向量。这些向量包含了 token 的语义信息。
+                    <br>在实际 Transformer 中，还会加入位置编码 (Positional Encoding)。
+                </p>
+                <div class="tokens-container" id="tokenContainer"></div>
+                <div class="calculation-detail">
+                    <h3 style="color: #60a5fa; margin-bottom: 16px;">📐 嵌入向量 (维度: ${dim})</h3>
+                    <div id="embeddingDetail"></div>
+                </div>
+            `;
+
+            const tokenContainer = document.getElementById('tokenContainer');
+            tokens.forEach((token, i) => {
+                const box = document.createElement('div');
+                box.className = 'token-box';
+                box.innerHTML = `
+                    <div class="token-label">Token ${i+1}</div>
+                    <div class="token-text">"${token}"</div>
+                    <div class="token-vector">[${embeddings[i].join(', ')}]</div>
+                `;
+                tokenContainer.appendChild(box);
+            });
+
+            const detail = document.getElementById('embeddingDetail');
+            tokens.forEach((token, i) => {
+                detail.innerHTML += `
+                    <div class="calc-row">
+                        <span class="calc-token">"${token}"</span>
+                        <span class="calc-op">→</span>
+                        <span style="color: #94a3b8;">Embedding</span>
+                        <span class="calc-op">=</span>
+                        <span style="color: #e2e8f0; font-family: monospace;">[${embeddings[i].join(', ')}]</span>
+                    </div>
+                `;
+            });
+        }
+
+        function renderQKV(container) {
+            container.innerHTML = `
+                <h2 class="step-title">步骤 2: 生成 Q, K, V 矩阵</h2>
+                <p class="step-description">
+                    通过三个不同的线性变换 (权重矩阵 W<sup>Q</sup>, W<sup>K</sup>, W<sup>V</sup>)，
+                    将输入嵌入转换为查询 (Query)、键 (Key) 和值 (Value) 向量。
+                </p>
+                <div class="math-formula">
+                    Q = X · W<sup>Q</sup>&nbsp;&nbsp;&nbsp;&nbsp;K = X · W<sup>K</sup>&nbsp;&nbsp;&nbsp;&nbsp;V = X · W<sup>V</sup>
+                </div>
+                <div class="matrix-container" id="qkvContainer"></div>
+            `;
+
+            const qkvContainer = document.getElementById('qkvContainer');
+            
+            ['Q (Query)', 'K (Key)', 'V (Value)'].forEach((name, matrixIdx) => {
+                const matrix = matrixIdx === 0 ? Q : (matrixIdx === 1 ? K : V);
+                const wrapper = document.createElement('div');
+                wrapper.className = 'matrix-wrapper';
+                
+                let gridHTML = `<div class="matrix-label">${name}</div><div class="matrix" style="grid-template-columns: repeat(${dim}, 1fr);">`;
+                matrix.forEach((row, i) => {
+                    row.forEach((val, j) => {
+                        const hue = matrixIdx === 0 ? 220 : (matrixIdx === 1 ? 280 : 160);
+                        const intensity = Math.min(1, Math.abs(parseFloat(val)) / 1.5);
+                        const bg = `hsla(${hue}, 70%, ${30 + intensity * 40}%, ${0.3 + intensity * 0.7})`;
+                        gridHTML += `<div class="matrix-cell" style="background: ${bg}; color: white;" title="${name}[${i},${j}] = ${val}">${val}</div>`;
+                    });
+                });
+                gridHTML += '</div>';
+                wrapper.innerHTML = gridHTML;
+                qkvContainer.appendChild(wrapper);
+            });
+        }
+
+        function renderAttentionScores(container) {
+            container.innerHTML = `
+                <h2 class="step-title">步骤 3: 计算注意力分数</h2>
+                <p class="step-description">
+                    计算 Query 和 Key 的点积，得到注意力分数，表示每个 token 对其他 token 的关注程度。
+                    除以 √d<sub>k</sub> 是为了防止点积过大导致 softmax 梯度消失。
+                </p>
+                <div class="math-formula">
+                    Attention(Q, K) = Q · K<sup>T</sup> / √d<sub>k</sub> &nbsp;&nbsp; (√${dim} ≈ ${Math.sqrt(dim).toFixed(2)})
+                </div>
+                <div class="matrix-wrapper" style="text-align: center; margin: 30px 0;">
+                    <div class="matrix-label">注意力分数矩阵 (Attention Scores)</div>
+                    <div class="matrix" id="scoreMatrix" style="grid-template-columns: repeat(${tokens.length}, 1fr); display: inline-grid;"></div>
+                </div>
+                <div class="calculation-detail" id="scoreDetail"></div>
+            `;
+
+            const matrix = document.getElementById('scoreMatrix');
+            const maxScore = Math.max(...attentionScores.flat().map(v => Math.abs(parseFloat(v))));
+            
+            attentionScores.forEach((row, i) => {
+                row.forEach((val, j) => {
+                    const score = parseFloat(val);
+                    const normalized = score / (maxScore || 1);
+                    const bg = score > 0 
+                        ? `rgba(239, 68, 68, ${0.2 + Math.abs(normalized) * 0.8})`
+                        : `rgba(59, 130, 246, ${0.2 + Math.abs(normalized) * 0.8})`;
+                    const cell = document.createElement('div');
+                    cell.className = 'matrix-cell heatmap-cell';
+                    cell.style.background = bg;
+                    cell.style.color = Math.abs(normalized) > 0.5 ? 'white' : '#e2e8f0';
+                    cell.textContent = val;
+                    cell.title = `Score(${tokens[i]}, ${tokens[j]}) = ${val}`;
+                    matrix.appendChild(cell);
+                });
+            });
+
+            // Show example calculation
+            const detail = document.getElementById('scoreDetail');
+            detail.innerHTML = '<h3 style="color: #60a5fa; margin-bottom: 16px;">🧮 计算示例</h3>';
+            detail.innerHTML += `
+                <div class="calc-row">
+                    <span style="color: #94a3b8;">Score("${tokens[0]}", "${tokens[0]}") =</span>
+                    <span style="color: #e2e8f0;">Q[0] · K[0]<sup>T</sup> / √${dim} ≈ ${attentionScores[0][0]}</span>
+                </div>
+            `;
+        }
+
+        function renderSoftmax(container) {
+            container.innerHTML = `
+                <h2 class="step-title">步骤 4: Softmax 归一化</h2>
+                <p class="step-description">
+                    对每一行的注意力分数应用 softmax 函数，将分数转换为概率分布（权重和为1）。
+                    这样每个 token 对其他 token 的注意力总和为 100%。
+                </p>
+                <div class="math-formula">
+                    softmax(x<sub>i</sub>) = e<sup>x<sub>i</sub></sup> / Σ<sub>j</sub> e<sup>x<sub>j</sub></sup>
+                </div>
+                <div class="matrix-wrapper" style="text-align: center; margin: 30px 0;">
+                    <div class="matrix-label">注意力权重矩阵 (Attention Weights)</div>
+                    <div class="matrix" id="weightMatrix" style="grid-template-columns: repeat(${tokens.length}, 1fr); display: inline-grid;"></div>
+                </div>
+                <div class="softmax-viz" id="softmaxViz"></div>
+            `;
+
+            const matrix = document.getElementById('weightMatrix');
+            attentionWeights.forEach((row, i) => {
+                row.forEach((val, j) => {
+                    const weight = parseFloat(val);
+                    const bg = `rgba(139, 92, 246, ${0.2 + weight * 0.8})`;
+                    const cell = document.createElement('div');
+                    cell.className = 'matrix-cell heatmap-cell';
+                    cell.style.background = bg;
+                    cell.style.color = weight > 0.5 ? 'white' : '#e2e8f0';
+                    cell.textContent = val;
+                    cell.title = `Weight(${tokens[i]} → ${tokens[j]}) = ${val}`;
+                    matrix.appendChild(cell);
+                });
+            });
+
+            const viz = document.getElementById('softmaxViz');
+            tokens.forEach((token, i) => {
+                const row = document.createElement('div');
+                row.className = 'softmax-row';
+                const weights = attentionWeights[i];
+                const maxW = Math.max(...weights.map(w => parseFloat(w)));
+                const dominantIdx = weights.indexOf(maxW);
+                
+                row.innerHTML = `
+                    <div class="softmax-token">"${token}"</div>
+                    <div class="softmax-bar-container">
+                        ${weights.map((w, j) => {
+                            const width = (parseFloat(w) * 100).toFixed(1);
+                            return `<div class="softmax-bar" style="width: ${width}%; position: absolute; left: 0; top: ${j * 25}%; height: 23px; font-size: 0.75px;">
+                                ${width}%
+                            </div>`;
+                        }).join('')}
+                    </div>
+                    <div style="min-width: 120px; font-size: 0.85rem; color: #94a3b8;">
+                        最关注: "${tokens[dominantIdx]}"
+                    </div>
+                `;
+                viz.appendChild(row);
+            });
+        }
+
+        function renderWeightedAggregation(container) {
+            container.innerHTML = `
+                <h2 class="step-title">步骤 5: 加权聚合输出</h2>
+                <p class="step-description">
+                    使用注意力权重对 Value 向量进行加权求和，得到每个 token 的最终输出表示。
+                    这个输出融合了上下文信息，是"自注意力"的核心。
+                </p>
+                <div class="math-formula">
+                    Output = Attention Weights · V
+                </div>
+                <div class="output-comparison">
+                    <div class="output-card">
+                        <h3>输入嵌入 (Input)</h3>
+                        <div id="inputVecs"></div>
+                    </div>
+                    <div class="output-card">
+                        <h3>注意力权重 × Value</h3>
+                        <div id="calcVecs"></div>
+                    </div>
+                    <div class="output-card">
+                        <h3>输出向量 (Output)</h3>
+                        <div id="outputVecs"></div>
+                    </div>
+                </div>
+            `;
+
+            tokens.forEach((token, i) => {
+                const inputDiv = document.createElement('div');
+                inputDiv.style.marginBottom = '12px';
+                inputDiv.innerHTML = `
+                    <div style="color: #60a5fa; font-size: 0.85rem; margin-bottom: 4px;">"${token}"</div>
+                    <div class="vector-display">
+                        ${embeddings[i].map(v => `<span class="vector-item">${v}</span>`).join('')}
+                    </div>
+                `;
+                document.getElementById('inputVecs').appendChild(inputDiv);
+
+                const calcDiv = document.createElement('div');
+                calcDiv.style.marginBottom = '12px';
+                const weights = attentionWeights[i];
+                const calcStr = weights.map((w, j) => `${w}·V${j+1}`).join(' + ');
+                calcDiv.innerHTML = `
+                    <div style="color: #a78bfa; font-size: 0.85rem; margin-bottom: 4px;">${calcStr}</div>
+                `;
+                document.getElementById('calcVecs').appendChild(calcDiv);
+
+                const outDiv = document.createElement('div');
+                outDiv.style.marginBottom = '12px';
+                outDiv.innerHTML = `
+                    <div style="color: #34d399; font-size: 0.85rem; margin-bottom: 4px;">"${token}" 的上下文表示</div>
+                    <div class="vector-display">
+                        ${output[i].map(v => `<span class="vector-item">${v}</span>`).join('')}
+                    </div>
+                `;
+                document.getElementById('outputVecs').appendChild(outDiv);
+            });
+        }
+
+        function renderAttentionGraph(container) {
+            container.innerHTML = `
+                <h2 class="step-title">步骤 6: 注意力连接图谱</h2>
+                <p class="step-description">
+                    可视化每个 token 如何"关注"序列中的其他 token。线条粗细和颜色透明度表示注意力权重大小。
+                    <br>悬停在节点上可高亮该 token 的所有注意力连接。
+                </p>
+                <div class="attention-viz">
+                    <svg class="attention-svg" id="attentionSvg"></svg>
+                </div>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: linear-gradient(90deg, rgba(139,92,246,0.2), rgba(139,92,246,1));"></div>
+                        <span>注意力权重 (浅→深)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #fbbf24;"></div>
+                        <span>高亮连接</span>
+                    </div>
+                </div>
+                <div style="text-align: center; margin-top: 20px; color: #94a3b8; font-size: 0.9rem;">
+                    💡 提示: 将鼠标悬停在上方圆点上查看注意力流向
+                </div>
+            `;
+
+            const svg = document.getElementById('attentionSvg');
+            const width = svg.clientWidth || 800;
+            const height = 400;
+            svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+
+            // Define gradients
+            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            defs.innerHTML = `
+                <linearGradient id="tokenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+                </linearGradient>
+                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="28" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#fbbf24" />
+                </marker>
+            `;
+            svg.appendChild(defs);
+
+            const nodeRadius = 30;
+            const topY = 80;
+            const bottomY = height - 80;
+            const spacing = width / (tokens.length + 1);
+
+            // Draw attention lines first (so they appear behind nodes)
+            const linesGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            linesGroup.id = 'linesGroup';
+            svg.appendChild(linesGroup);
+
+            tokens.forEach((fromToken, i) => {
+                tokens.forEach((toToken, j) => {
+                    const weight = parseFloat(attentionWeights[i][j]);
+                    if (weight < 0.05) return; // Skip very small weights
+
+                    const x1 = spacing * (i + 1);
+                    const y1 = topY;
+                    const x2 = spacing * (j + 1);
+                    const y2 = bottomY;
+
+                    // Curved path
+                    const midY = (y1 + y2) / 2;
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    const d = `M ${x1} ${y1 + nodeRadius} Q ${x1} ${midY}, ${(x1+x2)/2} ${midY} T ${x2} ${y2 - nodeRadius}`;
+                    
+                    path.setAttribute('d', d);
+                    path.setAttribute('class', 'attention-line');
+                    path.setAttribute('data-from', i);
+                    path.setAttribute('data-to', j);
+                    path.setAttribute('stroke', `rgba(139, 92, 246, ${0.2 + weight * 0.8})`);
+                    path.setAttribute('stroke-width', Math.max(1, weight * 8));
+                    path.style.opacity = '0';
+                    
+                    linesGroup.appendChild(path);
+                });
+            });
+
+            // Draw nodes
+            const nodesGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            svg.appendChild(nodesGroup);
+
+            // Top row (Query tokens)
+            tokens.forEach((token, i) => {
+                const cx = spacing * (i + 1);
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.style.cursor = 'pointer';
+                
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', cx);
+                circle.setAttribute('cy', topY);
+                circle.setAttribute('r', nodeRadius);
+                circle.setAttribute('class', 'token-node');
+                circle.setAttribute('data-idx', i);
+                circle.setAttribute('data-row', 'top');
+                
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', cx);
+                text.setAttribute('y', topY);
+                text.setAttribute('class', 'token-text-svg');
+                text.textContent = token;
+                
+                const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                label.setAttribute('x', cx);
+                label.setAttribute('y', topY - nodeRadius - 10);
+                label.setAttribute('text-anchor', 'middle');
+                label.setAttribute('fill', '#94a3b8');
+                label.setAttribute('font-size', '12');
+                label.textContent = `Q${i+1}`;
+                
+                g.appendChild(circle);
+                g.appendChild(text);
+                g.appendChild(label);
+                nodesGroup.appendChild(g);
+
+                // Hover events
+                g.addEventListener('mouseenter', () => highlightConnections(i, 'from'));
+                g.addEventListener('mouseleave', clearHighlights);
+            });
+
+            // Bottom row (Key/Value tokens)
+            tokens.forEach((token, i) => {
+                const cx = spacing * (i + 1);
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.style.cursor = 'pointer';
+                
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', cx);
+                circle.setAttribute('cy', bottomY);
+                circle.setAttribute('r', nodeRadius);
+                circle.setAttribute('class', 'token-node');
+                circle.setAttribute('data-idx', i);
+                circle.setAttribute('data-row', 'bottom');
+                
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', cx);
+                text.setAttribute('y', bottomY);
+                text.setAttribute('class', 'token-text-svg');
+                text.textContent = token;
+                
+                const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                label.setAttribute('x', cx);
+                label.setAttribute('y', bottomY + nodeRadius + 20);
+                label.setAttribute('text-anchor', 'middle');
+                label.setAttribute('fill', '#94a3b8');
+                label.setAttribute('font-size', '12');
+                label.textContent = `K/V ${i+1}`;
+                
+                g.appendChild(circle);
+                g.appendChild(text);
+                g.appendChild(label);
+                nodesGroup.appendChild(g);
+
+                g.addEventListener('mouseenter', () => highlightConnections(i, 'to'));
+                g.addEventListener('mouseleave', clearHighlights);
+            });
+
+            // Animate lines appearing
+            setTimeout(() => {
+                const lines = document.querySelectorAll('.attention-line');
+                lines.forEach((line, idx) => {
+                    setTimeout(() => {
+                        line.style.opacity = '1';
+                    }, idx * 50);
+                });
+            }, 300);
+        }
+
+        function highlightConnections(idx, direction) {
+            const lines = document.querySelectorAll('.attention-line');
+            lines.forEach(line => {
+                const from = parseInt(line.getAttribute('data-from'));
+                const to = parseInt(line.getAttribute('data-to'));
+                
+                if ((direction === 'from' && from === idx) || (direction === 'to' && to === idx)) {
+                    line.style.opacity = '1';
+                    line.setAttribute('stroke', '#fbbf24');
+                    line.setAttribute('stroke-width', parseFloat(line.getAttribute('stroke-width')) * 1.5);
+                } else {
+                    line.style.opacity = '0.1';
+                }
+            });
+        }
+
+        function clearHighlights() {
+            const lines = document.querySelectorAll('.attention-line');
+            lines.forEach(line => {
+                const weight = parseFloat(attentionWeights[line.getAttribute('data-from')][line.getAttribute('data-to')]);
+                line.style.opacity = '1';
+                line.setAttribute('stroke', `rgba(139, 92, 246, ${0.2 + weight * 0.8})`);
+                line.setAttribute('stroke-width', Math.max(1, weight * 8));
+            });
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' && currentStep < 5) showStep(currentStep + 1);
+            if (e.key === 'ArrowLeft' && currentStep > 0) showStep(currentStep - 1);
+        });
+    </script>
+</body>
+</html>
